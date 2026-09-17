@@ -3,10 +3,12 @@
 import useSWR from "swr";
 import type { Store } from "@/types/store";
 import type { Coords } from "./useLocation";
+import { isDevMode } from "@/lib/meshi/dev-mode";
+import { MOCK_STORES } from "@/lib/meshi/mock-stores";
 
 export type StoresStatus = "idle" | "loading" | "success" | "error";
 
-async function fetchStores([, lat, lng]: readonly [string, number, number]): Promise<Store[]> {
+async function fetchStoresFromApi(lat: number, lng: number): Promise<Store[]> {
   const res = await fetch("/api/stores", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -17,14 +19,17 @@ async function fetchStores([, lat, lng]: readonly [string, number, number]): Pro
   return data.stores;
 }
 
-/** Fetches nearby stores for the given coords via SWR (Next.js's recommended
- * client-fetching pattern) — avoids hand-rolling loading/error state in a
- * useEffect. */
+/** Fetches nearby stores for the given coords via SWR. In dev mode, returns
+ * mock data instead of calling the paid Places/Routes APIs — see isDevMode(). */
 export function useStores(coords: Coords | null) {
-  const key = coords ? (["stores", coords.lat, coords.lng] as const) : null;
-  const { data, error, isLoading, mutate } = useSWR(key, fetchStores);
+  const devMode = isDevMode();
+  const key = devMode ? "dev-mock-stores" : coords ? `stores:${coords.lat}:${coords.lng}` : null;
 
-  const status: StoresStatus = !coords
+  const { data, error, isLoading, mutate } = useSWR(key, () =>
+    devMode ? Promise.resolve(MOCK_STORES) : fetchStoresFromApi(coords!.lat, coords!.lng),
+  );
+
+  const status: StoresStatus = !key
     ? "idle"
     : error
       ? "error"

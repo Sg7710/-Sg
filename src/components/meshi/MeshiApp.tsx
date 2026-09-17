@@ -5,6 +5,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useLocation } from "@/hooks/useLocation";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useStores } from "@/hooks/useStores";
+import { isDevMode } from "@/lib/meshi/dev-mode";
 import { FRAME_CLASS } from "./frame";
 import { LocationPermission } from "./LocationPermission";
 import { OnboardingChoice } from "./OnboardingChoice";
@@ -48,6 +49,7 @@ function CenteredMessage({
 }
 
 export function MeshiApp() {
+  const devMode = isDevMode();
   const [tab, setTab] = useState<Tab>("swipe");
   const [idx, setIdx] = useState(0);
 
@@ -56,18 +58,22 @@ export function MeshiApp() {
     status: storesStatus,
     stores,
     retry: retryStores,
-  } = useStores(locationStatus === "granted" ? coords : null);
+  } = useStores(devMode ? coords : locationStatus === "granted" ? coords : null);
   const { favorites, addFavorite, removeFavorite } = useFavorites();
   const { seen: onboardingSeen } = useOnboarding();
 
   // Freeze "is this a returning visitor" the first time we know it, so later
   // markSeen() calls (from LocationPermission) can't flip this mid-flow.
-  const [isReturningVisitor, setIsReturningVisitor] = useState<boolean | null>(null);
+  // In dev mode there's no onboarding flow at all, so this is never null.
+  const [isReturningVisitor, setIsReturningVisitor] = useState<boolean | null>(
+    devMode ? false : null,
+  );
   if (isReturningVisitor === null && onboardingSeen !== undefined) {
     setIsReturningVisitor(onboardingSeen);
   }
 
-  const [stage, setStage] = useState<Stage>("location");
+  // Dev mode: skip location permission + onboarding entirely, land straight on the swipe tab.
+  const [stage, setStage] = useState<Stage>(devMode ? "app" : "location");
   if (stage === "location" && locationStatus === "granted") {
     setStage(isReturningVisitor ? "app" : "choice");
   }
@@ -106,7 +112,7 @@ export function MeshiApp() {
 
   return (
     <div className={FRAME_CLASS}>
-      <Header locationStatus={locationStatus} storeCount={stores.length} />
+      <Header locationStatus={devMode ? "granted" : locationStatus} storeCount={stores.length} />
 
       {tab === "swipe" ? (
         <SwipeTab
