@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLocation } from "@/hooks/useLocation";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -9,14 +9,14 @@ import { isDevMode } from "@/lib/meshi/dev-mode";
 import { FRAME_CLASS } from "./frame";
 import { LocationPermission } from "./LocationPermission";
 import { OnboardingChoice } from "./OnboardingChoice";
-import { OnboardingSlides } from "./OnboardingSlides";
+import { TutorialOverlay } from "./TutorialOverlay";
 import { Header } from "./Header";
 import { SwipeTab } from "./SwipeTab";
 import { FavListTab } from "./FavListTab";
 import { BottomTabBar } from "./BottomTabBar";
 
 type Tab = "swipe" | "fav";
-type Stage = "location" | "choice" | "slides" | "app";
+type Stage = "location" | "choice" | "app";
 
 function CenteredMessage({
   title,
@@ -50,8 +50,10 @@ function CenteredMessage({
 
 export function MeshiApp() {
   const devMode = isDevMode();
+  const frameRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>("swipe");
   const [idx, setIdx] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const { status: locationStatus, coords, request } = useLocation();
   const {
@@ -72,8 +74,9 @@ export function MeshiApp() {
     setIsReturningVisitor(onboardingSeen);
   }
 
-  // Dev mode: skip location permission + onboarding entirely, land straight on the swipe tab.
-  const [stage, setStage] = useState<Stage>(devMode ? "app" : "location");
+  // Dev mode: skip only the location-permission screen. The onboarding choice
+  // (and tutorial overlay on the real swipe screen) still show normally.
+  const [stage, setStage] = useState<Stage>(devMode ? "choice" : "location");
   if (stage === "location" && locationStatus === "granted") {
     setStage(isReturningVisitor ? "app" : "choice");
   }
@@ -91,13 +94,12 @@ export function MeshiApp() {
   if (stage === "choice") {
     return (
       <OnboardingChoice
-        onChoose={(wantsSlides) => setStage(wantsSlides ? "slides" : "app")}
+        onChoose={(wantsTutorial) => {
+          setShowTutorial(wantsTutorial);
+          setStage("app");
+        }}
       />
     );
-  }
-
-  if (stage === "slides") {
-    return <OnboardingSlides onComplete={() => setStage("app")} />;
   }
 
   if (storesStatus === "error") {
@@ -111,7 +113,7 @@ export function MeshiApp() {
   }
 
   return (
-    <div className={FRAME_CLASS}>
+    <div ref={frameRef} className={FRAME_CLASS}>
       <Header locationStatus={devMode ? "granted" : locationStatus} storeCount={stores.length} />
 
       {tab === "swipe" ? (
@@ -127,6 +129,10 @@ export function MeshiApp() {
       )}
 
       <BottomTabBar tab={tab} favCount={favorites.length} onChange={setTab} />
+
+      {showTutorial && (
+        <TutorialOverlay containerRef={frameRef} onComplete={() => setShowTutorial(false)} />
+      )}
     </div>
   );
 }

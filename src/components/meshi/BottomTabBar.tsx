@@ -22,6 +22,7 @@ export function BottomTabBar({ tab, favCount, onChange }: BottomTabBarProps) {
       </button>
       <button
         type="button"
+        data-onboarding-target="fav-tab"
         onClick={() => onChange("fav")}
         className={`relative h-12 flex-1 rounded-full text-sm font-bold ${
           tab === "fav" ? "bg-tab-active text-text-primary" : "text-text-secondary"
