@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Store } from "@/types/store";
 import { StoreCard, type StoreCardHandle } from "./StoreCard";
 
@@ -14,6 +14,7 @@ interface SwipeTabProps {
 
 export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTabProps) {
   const topRef = useRef<StoreCardHandle>(null);
+  const [announcement, setAnnouncement] = useState("");
   const stack = useMemo(() => stores.slice(idx, idx + 3), [stores, idx]);
   const total = stores.length;
   const current = Math.min(idx + 1, total);
@@ -22,11 +23,23 @@ export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTa
   function handleCommit(direction: "like" | "pass") {
     if (!topStore) return;
     if (direction === "like") onLike(topStore.placeId);
+    setAnnouncement(
+      direction === "like"
+        ? `${topStore.name}を食べたいに追加しました`
+        : `${topStore.name}をパスしました`,
+    );
   }
+
+  const liveRegion = (
+    <div aria-live="polite" className="sr-only">
+      {announcement}
+    </div>
+  );
 
   if (stack.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+        {liveRegion}
         <h2 className="text-lg font-bold text-text-primary">この辺りは全部見ました</h2>
         <p className="text-sm text-text-secondary">食べたいリストから決めるか、もう一度見返せます。</p>
         <button
@@ -42,6 +55,7 @@ export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTa
 
   return (
     <div className="flex flex-1 flex-col px-5 pt-4">
+      {liveRegion}
       <div className="relative flex-1">
         {stack.map((store, i) => (
           <StoreCard

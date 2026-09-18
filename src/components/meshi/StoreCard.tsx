@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Store } from "@/types/store";
 import { walkText } from "@/lib/meshi/derived";
 
@@ -15,9 +15,11 @@ interface StoreCardProps {
   onAdvance?: () => void;
 }
 
-const SWIPE_THRESHOLD = 88;
+const SWIPE_THRESHOLD = 88; // px
+const VELOCITY_THRESHOLD = 0.5; // px/ms — a fast short flick commits even under the distance threshold
 const FLY_DISTANCE = 520;
 const SETTLE_MS = 260;
+const HISTORY_SIZE = 3; // velocity is averaged over the last N move samples, not just the last 2 (jitter-prone)
 
 export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function StoreCard(
   { store, position, onCommit, onAdvance },
@@ -29,8 +31,17 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
   const [flying, setFlying] = useState<"like" | "pass" | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const dxRef = useRef(0);
+  const historyRef = useRef<{ x: number; t: number }[]>([]);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const isTop = position === 0;
+
+  // Keyboard users tab/focus onto whichever card is currently on top; when a
+  // card becomes the top card (after the previous one is swiped away), move
+  // focus to it so arrow-key swiping keeps working without re-tabbing.
+  useEffect(() => {
+    if (isTop) cardRef.current?.focus();
+  }, [isTop]);
 
   function commit(direction: "like" | "pass") {
     if (flying) return;
@@ -49,6 +60,7 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
     if (!isTop || flying) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     startRef.current = { x: e.clientX, y: e.clientY };
+    historyRef.current = [{ x: e.clientX, t: e.timeStamp }];
     setDragging(true);
   }
 
@@ -59,17 +71,43 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
     dxRef.current = nextDx;
     setDx(nextDx);
     setDy(nextDy);
+
+    const history = historyRef.current;
+    history.push({ x: e.clientX, t: e.timeStamp });
+    if (history.length > HISTORY_SIZE) history.shift();
+  }
+
+  function releaseVelocity(): number {
+    const history = historyRef.current;
+    if (history.length < 2) return 0;
+    const first = history[0];
+    const last = history[history.length - 1];
+    const dt = last.t - first.t;
+    return dt > 0 ? (last.x - first.x) / dt : 0;
   }
 
   function handlePointerUp() {
     if (!isTop || !startRef.current || flying) return;
     startRef.current = null;
-    if (Math.abs(dxRef.current) > SWIPE_THRESHOLD) {
+    const passedDistance = Math.abs(dxRef.current) > SWIPE_THRESHOLD;
+    const passedVelocity = Math.abs(releaseVelocity()) > VELOCITY_THRESHOLD;
+    if (passedDistance || passedVelocity) {
       commit(dxRef.current > 0 ? "like" : "pass");
     } else {
       setDragging(false);
       setDx(0);
       setDy(0);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!isTop || flying) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      commit("like");
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      commit("pass");
     }
   }
 
@@ -82,17 +120,22 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
 
   return (
     <div
+      ref={cardRef}
       className="absolute inset-0 flex touch-none flex-col overflow-hidden rounded-[26px] border border-card-border bg-white shadow-card"
       style={{
         transform,
+        transformOrigin: "50% 100%",
         transition: isTop && !dragging ? "transform .26s cubic-bezier(.22,.68,.36,1)" : "none",
         opacity: position === 2 ? 0.6 : 1,
         zIndex: 10 - position,
       }}
+      tabIndex={isTop ? 0 : -1}
+      aria-label={`${store.name}。右矢印キーで食べたいに追加、左矢印キーでパス`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onKeyDown={handleKeyDown}
     >
       <div className="relative flex-1 bg-tab-active">
         {/* eslint-disable-next-line @next/next/no-img-element */}
