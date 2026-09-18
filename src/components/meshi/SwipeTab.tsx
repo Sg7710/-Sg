@@ -7,12 +7,13 @@ import { StoreCard, type StoreCardHandle } from "./StoreCard";
 interface SwipeTabProps {
   stores: Store[];
   idx: number;
+  isRelapse?: boolean;
   onAdvance: () => void;
   onLike: (placeId: string) => void;
-  onResetIdx: () => void;
+  onPass: (placeId: string) => void;
 }
 
-export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTabProps) {
+export function SwipeTab({ stores, idx, isRelapse = false, onAdvance, onLike, onPass }: SwipeTabProps) {
   const topRef = useRef<StoreCardHandle>(null);
   const [announcement, setAnnouncement] = useState("");
   const stack = useMemo(() => stores.slice(idx, idx + 3), [stores, idx]);
@@ -22,7 +23,11 @@ export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTa
 
   function handleCommit(direction: "like" | "pass") {
     if (!topStore) return;
-    if (direction === "like") onLike(topStore.placeId);
+    if (direction === "like") {
+      onLike(topStore.placeId);
+    } else {
+      onPass(topStore.placeId);
+    }
     setAnnouncement(
       direction === "like"
         ? `${topStore.name}を食べたいに追加しました`
@@ -40,15 +45,7 @@ export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTa
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
         {liveRegion}
-        <h2 className="text-lg font-bold text-text-primary">この辺りは全部見ました</h2>
-        <p className="text-sm text-text-secondary">食べたいリストから決めるか、もう一度見返せます。</p>
-        <button
-          type="button"
-          onClick={onResetIdx}
-          className="mt-4 h-12 rounded-full bg-accent px-6 text-sm font-bold text-text-primary"
-        >
-          もう一度見る
-        </button>
+        <p className="text-sm text-text-secondary">読み込み中…</p>
       </div>
     );
   }
@@ -63,6 +60,7 @@ export function SwipeTab({ stores, idx, onAdvance, onLike, onResetIdx }: SwipeTa
             ref={i === 0 ? topRef : undefined}
             store={store}
             position={i}
+            isRelapse={isRelapse}
             onCommit={handleCommit}
             onAdvance={onAdvance}
           />

@@ -11,6 +11,7 @@ export interface StoreCardHandle {
 interface StoreCardProps {
   store: Store;
   position: number;
+  isRelapse?: boolean;
   onCommit?: (direction: "like" | "pass") => void;
   onAdvance?: () => void;
 }
@@ -22,7 +23,7 @@ const SETTLE_MS = 260;
 const HISTORY_SIZE = 3; // velocity is averaged over the last N move samples, not just the last 2 (jitter-prone)
 
 export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function StoreCard(
-  { store, position, onCommit, onAdvance },
+  { store, position, isRelapse = false, onCommit, onAdvance },
   ref,
 ) {
   const [dx, setDx] = useState(0);
@@ -148,6 +149,11 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
         <span className="absolute left-3 top-3 rounded-[11px] bg-black/55 px-2.5 py-1 text-xs font-bold text-white">
           {store.genre}
         </span>
+        {isRelapse && (
+          <span className="absolute left-[92px] top-3 rounded-[11px] bg-accent px-2.5 py-1 text-xs font-bold text-text-primary">
+            再登場
+          </span>
+        )}
         {store.price && (
           <span className="absolute right-3 top-3 rounded-[11px] bg-black/55 px-2.5 py-1 text-xs font-bold text-white">
             {store.price}

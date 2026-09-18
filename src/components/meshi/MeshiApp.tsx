@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLocation } from "@/hooks/useLocation";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { usePassHistory } from "@/hooks/usePassHistory";
 import { useStores } from "@/hooks/useStores";
 import { isDevMode } from "@/lib/meshi/dev-mode";
+import { shuffle } from "@/lib/meshi/derived";
 import { FRAME_CLASS } from "./frame";
 import { LocationPermission } from "./LocationPermission";
 import { OnboardingChoice } from "./OnboardingChoice";
@@ -17,6 +19,9 @@ import { BottomTabBar } from "./BottomTabBar";
 
 type Tab = "swipe" | "fav";
 type Stage = "location" | "choice" | "app";
+// lap1 = 1周目(全件ランダム順)、confirm = 「もう一度見ますか」、
+// lap2 = 2周目(1回だけパスされた店のみ)、done = その日は以上
+type SwipePhase = "lap1" | "confirm" | "lap2" | "done";
 
 function CenteredMessage({
   title,
@@ -54,6 +59,10 @@ export function MeshiApp() {
   const [tab, setTab] = useState<Tab>("swipe");
   const [idx, setIdx] = useState(0);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [phase, setPhase] = useState<SwipePhase>("lap1");
+  const [lap2List, setLap2List] = useState<
+    ReturnType<typeof useStores>["stores"]
+  >([]);
 
   const { status: locationStatus, coords, request } = useLocation();
   const {
@@ -63,6 +72,11 @@ export function MeshiApp() {
   } = useStores(devMode ? coords : locationStatus === "granted" ? coords : null);
   const { favorites, addFavorite, removeFavorite } = useFavorites();
   const { seen: onboardingSeen } = useOnboarding();
+  const { getPassCount, recordPass } = usePassHistory();
+
+  // 1周目の並び。stores の中身が変わった(=新しく取得した)ときだけシャッフルし直す。
+  const lap1List = useMemo(() => shuffle(stores), [stores]);
+  const currentList = phase === "lap2" ? lap2List : lap1List;
 
   // Freeze "is this a returning visitor" the first time we know it, so later
   // markSeen() calls (from LocationPermission) can't flip this mid-flow.
@@ -112,20 +126,73 @@ export function MeshiApp() {
     return <CenteredMessage title="お店を探しています…" />;
   }
 
+  // ST-5: 1周目を出し切ったら、1回だけパスされた店で2周目の山を作る。
+  // 山が0件なら確認を出さずそのまま「今日は以上です」。
+  if (phase === "lap1" && lap1List.length > 0 && idx >= lap1List.length) {
+    const pile = lap1List.filter((s) => getPassCount(s.placeId) === 1);
+    setLap2List(pile);
+    setIdx(0);
+    setPhase(pile.length === 0 ? "done" : "confirm");
+  }
+  if (phase === "lap2" && idx >= lap2List.length) {
+    setIdx(0);
+    setPhase("done");
+  }
+
+  function handlePass(placeId: string) {
+    recordPass(placeId);
+  }
+
   return (
     <div ref={frameRef} className={FRAME_CLASS}>
       <Header locationStatus={devMode ? "granted" : locationStatus} storeCount={stores.length} />
 
-      {tab === "swipe" ? (
+      {tab === "fav" ? (
+        <FavListTab favorites={favorites} stores={stores} onRemove={removeFavorite} />
+      ) : phase === "confirm" ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+          <h2 className="text-lg font-bold text-text-primary">もう一度見ますか？</h2>
+          <p className="text-sm text-text-secondary">
+            さっきパスした{lap2List.length}件を、もう一度だけ出します。
+          </p>
+          <div className="mt-4 flex w-full max-w-[260px] flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setPhase("lap2")}
+              className="h-12 rounded-full bg-accent text-sm font-bold text-text-primary"
+            >
+              見る
+            </button>
+            <button
+              type="button"
+              onClick={() => setPhase("done")}
+              className="h-12 rounded-full border border-card-border text-sm font-bold text-text-primary"
+            >
+              見ない
+            </button>
+          </div>
+        </div>
+      ) : phase === "done" ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+          <h2 className="text-lg font-bold text-text-primary">今日は以上です</h2>
+          <p className="text-sm text-text-secondary">また明日、新しい気持ちで見返せます。</p>
+          <button
+            type="button"
+            onClick={() => setTab("fav")}
+            className="mt-4 h-12 rounded-full bg-accent px-6 text-sm font-bold text-text-primary"
+          >
+            食べたいリストを見る
+          </button>
+        </div>
+      ) : (
         <SwipeTab
-          stores={stores}
+          stores={currentList}
           idx={idx}
+          isRelapse={phase === "lap2"}
           onAdvance={() => setIdx((i) => i + 1)}
           onLike={addFavorite}
-          onResetIdx={() => setIdx(0)}
+          onPass={handlePass}
         />
-      ) : (
-        <FavListTab favorites={favorites} stores={stores} onRemove={removeFavorite} />
       )}
 
       <BottomTabBar tab={tab} favCount={favorites.length} onChange={setTab} />
