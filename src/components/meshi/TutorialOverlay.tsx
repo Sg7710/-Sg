@@ -83,7 +83,11 @@ export function TutorialOverlay({ containerRef, onComplete }: TutorialOverlayPro
             />
           ))}
         </div>
-        <button type="button" onClick={onComplete} className="text-xs font-bold text-white/85">
+        <button
+          type="button"
+          onClick={onComplete}
+          className="flex h-11 items-center px-2 text-xs font-bold text-white/85"
+        >
           スキップ
         </button>
       </div>
@@ -109,7 +113,7 @@ export function TutorialOverlay({ containerRef, onComplete }: TutorialOverlayPro
           <button
             type="button"
             onClick={() => (isLast ? onComplete() : setStepIndex((i) => i + 1))}
-            className="mt-2 h-10 w-full rounded-full bg-accent text-sm font-bold text-text-primary"
+            className="mt-2 h-11 w-full rounded-full bg-accent text-sm font-bold text-text-primary"
           >
             {isLast ? "わかった" : "つぎへ"}
           </button>

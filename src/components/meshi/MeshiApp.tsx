@@ -200,7 +200,15 @@ export function MeshiApp() {
       <BottomTabBar tab={tab} favCount={favorites.length} onChange={setTab} />
 
       {showTutorial && (
-        <TutorialOverlay containerRef={frameRef} onComplete={() => setShowTutorial(false)} />
+        <TutorialOverlay
+          containerRef={frameRef}
+          onComplete={() => {
+            setShowTutorial(false);
+            // オーバーレイを閉じるとフォーカスが失われる(要素ごと消えるため)ので、
+            // キーボード操作を続けられるようカードにフォーカスを戻す(8.2)。
+            frameRef.current?.querySelector<HTMLElement>('[tabindex="0"]')?.focus();
+          }}
+        />
       )}
     </div>
   );

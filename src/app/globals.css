@@ -29,3 +29,21 @@ body {
   background: var(--outer-bg);
   color: var(--text-primary);
 }
+
+/* 8.2 フォーカス表示: キーボード操作中どこにフォーカスがあるか、
+   ブラウザ標準よりはっきり見えるようアクセントカラーのリングで統一する。 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 8.2 prefers-reduced-motion: 動きを減らす設定の端末では、
+   このアプリが自前で付けているtransitionもすべて即時にする。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}

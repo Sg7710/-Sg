@@ -50,9 +50,17 @@ export const StoreCard = forwardRef<StoreCardHandle, StoreCardProps>(function St
     setFlying(direction);
     setDx(direction === "like" ? FLY_DISTANCE : -FLY_DISTANCE);
     onCommit?.(direction);
-    window.setTimeout(() => {
-      onAdvance?.();
-    }, SETTLE_MS);
+    // prefers-reduced-motion: 見た目のtransitionはCSS側で即時化されるが、
+    // 次のカードへの切り替え自体も待たせず即座に行う(8.2)。
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      () => {
+        onAdvance?.();
+      },
+      reduceMotion ? 0 : SETTLE_MS,
+    );
   }
 
   useImperativeHandle(ref, () => ({ commit }));
