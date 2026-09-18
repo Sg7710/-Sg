@@ -71,7 +71,7 @@ export function MeshiApp() {
     retry: retryStores,
   } = useStores(devMode ? coords : locationStatus === "granted" ? coords : null);
   const { favorites, addFavorite, removeFavorite } = useFavorites();
-  const { seen: onboardingSeen } = useOnboarding();
+  const { seen: onboardingSeen, markSeen } = useOnboarding();
   const { getPassCount, recordPass } = usePassHistory();
 
   // 1周目の並び。stores の中身が変わった(=新しく取得した)ときだけシャッフルし直す。
@@ -79,18 +79,19 @@ export function MeshiApp() {
   const currentList = phase === "lap2" ? lap2List : lap1List;
 
   // Freeze "is this a returning visitor" the first time we know it, so later
-  // markSeen() calls (from LocationPermission) can't flip this mid-flow.
-  // In dev mode there's no onboarding flow at all, so this is never null.
-  const [isReturningVisitor, setIsReturningVisitor] = useState<boolean | null>(
-    devMode ? false : null,
-  );
+  // markSeen() calls can't flip this mid-flow.
+  const [isReturningVisitor, setIsReturningVisitor] = useState<boolean | null>(null);
   if (isReturningVisitor === null && onboardingSeen !== undefined) {
     setIsReturningVisitor(onboardingSeen);
   }
 
-  // Dev mode: skip only the location-permission screen. The onboarding choice
-  // (and tutorial overlay on the real swipe screen) still show normally.
+  // Dev mode: skip only the location-permission screen, straight to the
+  // onboarding choice. Once we know this is a returning visitor (already
+  // marked seen in an earlier session), skip that too and go straight to the app.
   const [stage, setStage] = useState<Stage>(devMode ? "choice" : "location");
+  if (devMode && stage === "choice" && isReturningVisitor === true) {
+    setStage("app");
+  }
   if (stage === "location" && locationStatus === "granted") {
     setStage(isReturningVisitor ? "app" : "choice");
   }
@@ -109,6 +110,7 @@ export function MeshiApp() {
     return (
       <OnboardingChoice
         onChoose={(wantsTutorial) => {
+          markSeen();
           setShowTutorial(wantsTutorial);
           setStage("app");
         }}

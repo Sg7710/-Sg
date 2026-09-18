@@ -53,7 +53,7 @@ export function SwipeTab({ stores, idx, isRelapse = false, onAdvance, onLike, on
   return (
     <div className="flex flex-1 flex-col px-5 pt-4">
       {liveRegion}
-      <div className="relative flex-1">
+      <div className="relative flex-1 overflow-hidden">
         {stack.map((store, i) => (
           <StoreCard
             key={store.placeId}
