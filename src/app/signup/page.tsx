@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isDevMode } from "@/lib/meshi/dev-mode";
-import { LoginForm } from "./LoginForm";
+import { SignupForm } from "./SignupForm";
 
-export default async function LoginPage() {
+export default async function SignupPage() {
   if (!isDevMode()) {
     const supabase = await createClient();
     const {
@@ -12,5 +12,5 @@ export default async function LoginPage() {
     if (user) redirect("/");
   }
 
-  return <LoginForm />;
+  return <SignupForm />;
 }
