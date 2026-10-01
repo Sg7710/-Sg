@@ -15,7 +15,7 @@ export function LoginForm() {
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
     searchParams.get("error") === "auth"
-      ? "リンクが無効か期限切れです。別のブラウザ/メールアプリでリンクを開くとこうなります。もう一度送信し、今度は下のコード入力をお使いください。"
+      ? "リンクが無効か期限切れです。別のブラウザ/メールアプリでリンクを開くとこうなります。下にもう一度メールアドレスを入力して送信し、今度はリンクではなく届いたコードを入力してください。"
       : null,
   );
 
