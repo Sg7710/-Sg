@@ -22,24 +22,35 @@ export async function computeWalkMinutes(
     throw new Error("GOOGLE_MAPS_SERVER_API_KEY is not set");
   }
 
-  const res = await fetch("https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "originIndex,destinationIndex,duration,condition",
+  const res = await fetch(
+    "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "originIndex,destinationIndex,duration,condition",
+      },
+      body: JSON.stringify({
+        origins: [
+          {
+            waypoint: {
+              location: {
+                latLng: { latitude: origin.lat, longitude: origin.lng },
+              },
+            },
+          },
+        ],
+        destinations: destinations.map((d) => ({
+          waypoint: {
+            location: { latLng: { latitude: d.lat, longitude: d.lng } },
+          },
+        })),
+        travelMode: "WALK",
+      }),
+      cache: "no-store",
     },
-    body: JSON.stringify({
-      origins: [
-        { waypoint: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } } },
-      ],
-      destinations: destinations.map((d) => ({
-        waypoint: { location: { latLng: { latitude: d.lat, longitude: d.lng } } },
-      })),
-      travelMode: "WALK",
-    }),
-    cache: "no-store",
-  });
+  );
 
   if (!res.ok) {
     throw new Error(`Routes API error: ${res.status}`);
