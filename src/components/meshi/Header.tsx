@@ -1,6 +1,8 @@
 "use client";
 
 import type { LocationStatus } from "@/hooks/useLocation";
+import { isDevMode } from "@/lib/meshi/dev-mode";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const SEARCH_RADIUS_M = 1500;
 
@@ -30,7 +32,7 @@ export function Header({ locationStatus, storeCount }: HeaderProps) {
     <div className="shrink-0 px-5 pt-5">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[locationStatus]}`} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-text-primary">
             {STATUS_LABEL[locationStatus]}
           </p>
@@ -41,6 +43,7 @@ export function Header({ locationStatus, storeCount }: HeaderProps) {
             </p>
           )}
         </div>
+        {!isDevMode() && <LogoutButton />}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { FRAME_CLASS } from "@/components/meshi/frame";
+import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -63,6 +64,16 @@ export function LoginForm() {
           </button>
           {errorMessage && <p className="text-xs text-[#D8452F]">{errorMessage}</p>}
         </form>
+
+        <div className="mt-4 flex w-full max-w-[280px] items-center gap-3">
+          <span className="h-px flex-1 bg-card-border" />
+          <span className="text-xs text-text-tertiary">または</span>
+          <span className="h-px flex-1 bg-card-border" />
+        </div>
+        <div className="mt-4 w-full max-w-[280px]">
+          <GoogleLoginButton />
+        </div>
+
         <Link href="/signup" className="mt-4 text-xs font-bold text-text-tertiary">
           アカウントをお持ちでない方はこちら
         </Link>
