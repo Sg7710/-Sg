@@ -1,66 +1,104 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { Store } from "@/types/store";
+import type { LikeEntry } from "@/types/social";
 import type { FavoriteEntry } from "@/hooks/useFavorites";
-import { walkText } from "@/lib/meshi/derived";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { MOCK_PEOPLE } from "@/lib/meshi/mock-people";
+import { FavListHeader, type FavView } from "./FavListHeader";
+import { FavListMineView } from "./FavListMineView";
+import { FavListEveryoneView } from "./FavListEveryoneView";
+import { FavListHistoryView } from "./FavListHistoryView";
+import { ProfilePopup } from "./ProfilePopup";
 
 interface FavListTabProps {
   favorites: FavoriteEntry[];
   stores: Store[];
+  likeHistory: LikeEntry[];
   onRemove: (placeId: string) => void;
+  onToggleFavorite: (placeId: string) => void;
+  onAddMany: (placeIds: string[]) => void;
 }
 
-export function FavListTab({ favorites, stores, onRemove }: FavListTabProps) {
-  const favStores = favorites
-    .map((f) => stores.find((s) => s.placeId === f.placeId))
-    .filter((s): s is Store => Boolean(s));
+export function FavListTab({
+  favorites,
+  stores,
+  likeHistory,
+  onRemove,
+  onToggleFavorite,
+  onAddMany,
+}: FavListTabProps) {
+  const [view, setView] = useState<FavView>("mine");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const user = useCurrentUser();
+
+  const myFavoritePlaceIds = useMemo(
+    () => new Set(favorites.map((f) => f.placeId)),
+    [favorites],
+  );
+
+  const othersCount = useMemo(() => {
+    const ids = new Set<string>();
+    for (const person of MOCK_PEOPLE) {
+      for (const id of person.wantIds) ids.add(id);
+    }
+    return ids.size;
+  }, []);
+
+  function changeView(next: FavView) {
+    setView(next);
+  }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-5 pt-4">
-      <div className="flex items-baseline gap-2 pb-3">
-        <h1 className="text-lg font-black text-text-primary">食べたいリスト</h1>
-        <span className="font-mono text-sm text-text-tertiary">{favorites.length}件</span>
-      </div>
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <FavListHeader
+        view={view}
+        onChangeView={changeView}
+        userName={user.name}
+        mineCount={favorites.length}
+        othersCount={othersCount}
+        historyCount={likeHistory.length}
+        onOpenMenu={() => setMenuOpen(true)}
+      />
 
-      {favorites.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <h2 className="text-base font-bold text-text-primary">まだ空です</h2>
-          <p className="text-sm text-text-secondary">
-            気になった写真を右にスワイプすると
-            <br />
-            ここに溜まっていきます
-          </p>
-        </div>
-      ) : (
-        <ul className="flex flex-col gap-3 pb-6">
-          {favStores.map((store) => (
-            <li
-              key={store.placeId}
-              className="flex items-center gap-3 rounded-2xl border border-card-border bg-white p-3 shadow-card"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={store.photoUrl}
-                alt={store.name}
-                className="h-[68px] w-[68px] shrink-0 rounded-xl object-cover"
-              />
-              <div className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left">
-                <span className="truncate text-base font-bold text-text-primary">{store.name}</span>
-                <span className="font-mono text-xs text-text-secondary">
-                  {walkText(store.walkMinutes)}
-                  {store.price ? ` / ${store.price}` : ""} / {store.genre}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onRemove(store.placeId)}
-                className="h-11 shrink-0 rounded-full border border-card-border px-4 text-xs font-bold text-text-secondary"
-              >
-                はずす
-              </button>
-            </li>
-          ))}
-        </ul>
+      {view === "mine" && (
+        <FavListMineView
+          favorites={favorites}
+          stores={stores}
+          people={MOCK_PEOPLE}
+          onRemove={onRemove}
+        />
+      )}
+      {view === "others" && (
+        <FavListEveryoneView
+          stores={stores}
+          people={MOCK_PEOPLE}
+          myFavoritePlaceIds={myFavoritePlaceIds}
+          onToggleMine={onToggleFavorite}
+        />
+      )}
+      {view === "history" && (
+        <FavListHistoryView
+          history={likeHistory}
+          stores={stores}
+          myFavoritePlaceIds={myFavoritePlaceIds}
+          onToggleMine={onToggleFavorite}
+          onBulkAdd={(placeIds) => {
+            onAddMany(placeIds);
+            setView("mine");
+          }}
+        />
+      )}
+
+      {menuOpen && (
+        <ProfilePopup
+          name={user.name}
+          favCount={favorites.length}
+          likeCount={likeHistory.length}
+          peopleCount={MOCK_PEOPLE.length}
+          onClose={() => setMenuOpen(false)}
+        />
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useLikeHistory } from "@/hooks/useLikeHistory";
 import { useLocation } from "@/hooks/useLocation";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePassHistory } from "@/hooks/usePassHistory";
@@ -70,7 +71,8 @@ export function MeshiApp() {
     stores,
     retry: retryStores,
   } = useStores(devMode ? coords : locationStatus === "granted" ? coords : null);
-  const { favorites, addFavorite, removeFavorite } = useFavorites();
+  const { favorites, addFavorite, removeFavorite, toggleFavorite } = useFavorites();
+  const { history: likeHistory, recordLike } = useLikeHistory();
   const { seen: onboardingSeen, markSeen } = useOnboarding();
   const { getPassCount, recordPass } = usePassHistory();
 
@@ -145,56 +147,76 @@ export function MeshiApp() {
     recordPass(placeId);
   }
 
+  function handleLike(placeId: string) {
+    addFavorite(placeId);
+    recordLike(placeId);
+  }
+
+  function handleAddMany(placeIds: string[]) {
+    placeIds.forEach((placeId) => addFavorite(placeId));
+  }
+
   return (
     <div ref={frameRef} className={FRAME_CLASS}>
-      <Header locationStatus={devMode ? "granted" : locationStatus} storeCount={stores.length} />
-
       {tab === "fav" ? (
-        <FavListTab favorites={favorites} stores={stores} onRemove={removeFavorite} />
-      ) : phase === "confirm" ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
-          <h2 className="text-lg font-bold text-text-primary">もう一度見ますか？</h2>
-          <p className="text-sm text-text-secondary">
-            さっきパスした{lap2List.length}件を、もう一度だけ出します。
-          </p>
-          <div className="mt-4 flex w-full max-w-[260px] flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => setPhase("lap2")}
-              className="h-12 rounded-full bg-accent text-sm font-bold text-text-primary"
-            >
-              見る
-            </button>
-            <button
-              type="button"
-              onClick={() => setPhase("done")}
-              className="h-12 rounded-full border border-card-border text-sm font-bold text-text-primary"
-            >
-              見ない
-            </button>
-          </div>
-        </div>
-      ) : phase === "done" ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
-          <h2 className="text-lg font-bold text-text-primary">今日は以上です</h2>
-          <p className="text-sm text-text-secondary">また明日、新しい気持ちで見返せます。</p>
-          <button
-            type="button"
-            onClick={() => setTab("fav")}
-            className="mt-4 h-12 rounded-full bg-accent px-6 text-sm font-bold text-text-primary"
-          >
-            食べたいリストを見る
-          </button>
-        </div>
-      ) : (
-        <SwipeTab
-          stores={currentList}
-          idx={idx}
-          isRelapse={phase === "lap2"}
-          onAdvance={() => setIdx((i) => i + 1)}
-          onLike={addFavorite}
-          onPass={handlePass}
+        <FavListTab
+          favorites={favorites}
+          stores={stores}
+          likeHistory={likeHistory}
+          onRemove={removeFavorite}
+          onToggleFavorite={toggleFavorite}
+          onAddMany={handleAddMany}
         />
+      ) : (
+        <>
+          <Header locationStatus={devMode ? "granted" : locationStatus} storeCount={stores.length} />
+
+          {phase === "confirm" ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+              <h2 className="text-lg font-bold text-text-primary">もう一度見ますか？</h2>
+              <p className="text-sm text-text-secondary">
+                さっきパスした{lap2List.length}件を、もう一度だけ出します。
+              </p>
+              <div className="mt-4 flex w-full max-w-[260px] flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPhase("lap2")}
+                  className="h-12 rounded-full bg-accent text-sm font-bold text-text-primary"
+                >
+                  見る
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhase("done")}
+                  className="h-12 rounded-full border border-card-border text-sm font-bold text-text-primary"
+                >
+                  見ない
+                </button>
+              </div>
+            </div>
+          ) : phase === "done" ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+              <h2 className="text-lg font-bold text-text-primary">今日は以上です</h2>
+              <p className="text-sm text-text-secondary">また明日、新しい気持ちで見返せます。</p>
+              <button
+                type="button"
+                onClick={() => setTab("fav")}
+                className="mt-4 h-12 rounded-full bg-accent px-6 text-sm font-bold text-text-primary"
+              >
+                食べたいリストを見る
+              </button>
+            </div>
+          ) : (
+            <SwipeTab
+              stores={currentList}
+              idx={idx}
+              isRelapse={phase === "lap2"}
+              onAdvance={() => setIdx((i) => i + 1)}
+              onLike={handleLike}
+              onPass={handlePass}
+            />
+          )}
+        </>
       )}
 
       <BottomTabBar tab={tab} favCount={favorites.length} onChange={setTab} />
